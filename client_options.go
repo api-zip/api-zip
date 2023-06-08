@@ -6,6 +6,7 @@ package zip
 
 import (
 	"context"
+	"reflect"
 
 	"k8s.io/apiserver/pkg/storage"
 )
@@ -28,9 +29,26 @@ type ClientConfig struct {
 // ClientOption is a Zip API client config option-method handler.
 type ClientOption func(*ClientConfig) error
 
+// StoreRehydrationMode is a switch that dictates how the store's before call is
+// used to manipulate the
+type StoreRehydrationMode string
+
+const (
+	// Always rehydrate the reference object
+	StoreRehydrationAlways = StoreRehydrationMode("always")
+
+	// Only rehydratae the reference object when its Spec is nil
+	StoreRehydrationSpecNil = StoreRehydrationMode("specnil")
+
+	// Never rehydrate the reference object
+	StoreRehydrationNever = StoreRehydrationMode("never")
+)
+
 // WithStore sets the Abstract client's store to the specified interface
-// implementation.
-func WithStore[Spec, Status any](store Store) ClientOption {
+// implementation.  An additional positional argument for the rehydration mode
+// is used to configure when the store on the before call is used and how it
+// manipulates the value of the reference object.
+func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientOption {
 	return func(config *ClientConfig) error {
 		if store == nil {
 			return nil
@@ -44,9 +62,28 @@ func WithStore[Spec, Status any](store Store) ClientOption {
 			// If this object is listable, attempt to retrieve from a list from
 			// the  store instead.
 			if list, ok := req.(*ObjectList[Spec, Status]); ok {
-				_ = store.GetList(ctx, "", storage.ListOptions{}, list)
+				var ret ObjectList[Spec, Status]
+				if err := store.GetList(ctx, "", storage.ListOptions{}, &ret); err != nil {
+					return list, err
+				}
+
+				switch {
+				// Always rehydrate
+				case mode == StoreRehydrationAlways:
+					fallthrough
+
+				case mode == StoreRehydrationSpecNil && list.Items == nil:
+					if &ret != nil {
+						list.Items = ret.Items
+					}
+				}
+
 				return list, nil
 			}
+
+			// Cast the referencable object, which we know is a spec-and-status
+			// object.
+			obj := req.(*Object[Spec, Status])
 
 			// If this object is not referencable, do not attempt to retrieve
 			// the object, simply return the input request.
@@ -55,9 +92,24 @@ func WithStore[Spec, Status any](store Store) ClientOption {
 				return req, nil
 			}
 
-			_ = store.Get(ctx, ref, storage.GetOptions{}, req)
+			var ret Object[Spec, Status]
+			_ = store.Get(ctx, ref, storage.GetOptions{}, &ret)
 
-			return req, nil
+			switch {
+			// Always rehydrate
+			case mode == StoreRehydrationAlways:
+				fallthrough
+			// Look up the object if the Spec of the Object is nil and a request to
+			// hydrate the contents is desired.  This is useful in scenarios where
+			// other attributes of the Object are used, e.g. those that define the
+			// Reference() method of the ReferenceObject interface.
+			case mode == StoreRehydrationSpecNil && reflect.DeepEqual(obj.Spec, *new(Spec)):
+				if &ret != nil {
+					*obj = ret
+				}
+			}
+
+			return obj, nil
 		})(config); err != nil {
 			return err
 		}

@@ -43,9 +43,9 @@ func WithStore[Spec, Status any](store Store) ClientOption {
 		if err := WithBefore(func(ctx context.Context, req ReferenceObject) (any, error) {
 			// If this object is listable, attempt to retrieve from a list from
 			// the  store instead.
-			if isList, _ := ObjectKindIsList(req); isList {
-				_ = store.GetList(ctx, "", storage.ListOptions{}, req)
-				return req, nil
+			if list, ok := req.(*ObjectList[Spec, Status]); ok {
+				_ = store.GetList(ctx, "", storage.ListOptions{}, list)
+				return list, nil
 			}
 
 			// If this object is not referencable, do not attempt to retrieve

@@ -6,7 +6,6 @@ package zip
 
 import (
 	"fmt"
-	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,13 +21,6 @@ type ObjectList[Spec, Status any] struct {
 
 	// Items contains the list of machines.
 	Items []Object[Spec, Status] `json:"items" protobuf:"bytes,2,rep,name=items"`
-}
-
-// ObjectKindIsList returns whether the provided runtime.Object is a of kind
-// list.
-func ObjectKindIsList(obj runtime.Object) (bool, error) {
-	kinds, _, err := Schemes.ObjectKinds(obj)
-	return err == nil && len(kinds) == 1 && strings.HasPrefix(kinds[0].Kind, "ObjectList"), err
 }
 
 // Reference implements Referencable.

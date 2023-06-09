@@ -63,7 +63,8 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 			// the  store instead.
 			if list, ok := req.(*ObjectList[Spec, Status]); ok {
 				var ret ObjectList[Spec, Status]
-				if err := store.GetList(ctx, "", storage.ListOptions{}, &ret); err != nil {
+				err := store.GetList(ctx, "", storage.ListOptions{}, &ret)
+				if err != nil {
 					return list, err
 				}
 
@@ -73,7 +74,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 					fallthrough
 
 				case mode == StoreRehydrationSpecNil && list.Items == nil:
-					if &ret != nil {
+					if err == nil && &ret != nil {
 						list.Items = ret.Items
 					}
 				}
@@ -93,7 +94,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 			}
 
 			var ret Object[Spec, Status]
-			_ = store.Get(ctx, ref, storage.GetOptions{}, &ret)
+			err = store.Get(ctx, ref, storage.GetOptions{}, &ret)
 
 			switch {
 			// Always rehydrate
@@ -104,7 +105,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 			// other attributes of the Object are used, e.g. those that define the
 			// Reference() method of the ReferenceObject interface.
 			case mode == StoreRehydrationSpecNil && reflect.DeepEqual(obj.Spec, *new(Spec)):
-				if &ret != nil {
+				if err == nil && &ret != nil {
 					*obj = ret
 				}
 			}

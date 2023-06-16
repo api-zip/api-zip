@@ -110,7 +110,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 				}
 			}
 
-			return obj, nil
+			return obj, err
 		})(config); err != nil {
 			return err
 		}

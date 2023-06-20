@@ -69,6 +69,12 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 				}
 
 				switch {
+				// When hydration is set to never, return both the obj and err which is
+				// then handled appropriately by the client.  Without this, the obj
+				// would still be returned without the potential err.
+				case mode == StoreRehydrationNever:
+					return list, err
+
 				// Always rehydrate
 				case mode == StoreRehydrationAlways:
 					fallthrough
@@ -97,9 +103,18 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 			err = store.Get(ctx, ref, storage.GetOptions{}, &ret)
 
 			switch {
-			// Always rehydrate
+			// When hydration is set to never, return both the obj and err which is
+			// then handled appropriately by the client.  Without this, the obj would
+			// still be returned without the potential err.
+			case mode == StoreRehydrationNever:
+				return obj, err
+
+			// Always rehydrate.
 			case mode == StoreRehydrationAlways:
-				fallthrough
+				if err == nil && &ret != nil {
+					*obj = ret
+				}
+
 			// Look up the object if the Spec of the Object is nil and a request to
 			// hydrate the contents is desired.  This is useful in scenarios where
 			// other attributes of the Object are used, e.g. those that define the
@@ -110,7 +125,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 				}
 			}
 
-			return obj, err
+			return obj, nil
 		})(config); err != nil {
 			return err
 		}

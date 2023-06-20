@@ -80,6 +80,7 @@ func (client *StreamClient[In, Out]) Channel(
 					out, err := after(ctx, req, in)
 					if err != nil {
 						*errs <- err
+						continue
 					}
 
 					// Re-assign the result from the OnAfter callback such that its value

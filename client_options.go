@@ -166,7 +166,10 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 // before the client invokes its method strategy.
 func WithBefore(before ...OnBefore) ClientOption {
 	return func(config *ClientConfig) error {
-		config.before = before
+		if config.before == nil {
+			config.before = []OnBefore{}
+		}
+		config.before = append(config.before, before...)
 		return nil
 	}
 }
@@ -175,7 +178,10 @@ func WithBefore(before ...OnBefore) ClientOption {
 // after the client has invoked its method strategy.
 func WithAfter(after ...OnAfter) ClientOption {
 	return func(config *ClientConfig) error {
-		config.after = after
+		if config.after == nil {
+			config.after = []OnAfter{}
+		}
+		config.after = append(config.after, after...)
 		return nil
 	}
 }

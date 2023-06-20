@@ -77,7 +77,9 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 
 				// Always rehydrate
 				case mode == StoreRehydrationAlways:
-					fallthrough
+					if err == nil && &ret != nil {
+						list.Items = ret.Items
+					}
 
 				case mode == StoreRehydrationSpecNil && list.Items == nil:
 					if err == nil && &ret != nil {

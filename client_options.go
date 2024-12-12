@@ -77,14 +77,10 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 
 				// Always rehydrate
 				case mode == StoreRehydrationAlways:
-					if err == nil && &ret != nil {
-						list.Items = ret.Items
-					}
+					list.Items = ret.Items
 
-				case mode == StoreRehydrationSpecNil && (list.Items == nil || len(list.Items) == 0):
-					if err == nil && &ret != nil {
-						list.Items = ret.Items
-					}
+				case mode == StoreRehydrationSpecNil && len(list.Items) == 0:
+					list.Items = ret.Items
 				}
 
 				return list, nil
@@ -113,7 +109,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 
 			// Always rehydrate.
 			case mode == StoreRehydrationAlways:
-				if err == nil && &ret != nil {
+				if err == nil {
 					*obj = ret
 				}
 
@@ -122,7 +118,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 			// other attributes of the Object are used, e.g. those that define the
 			// Reference() method of the ReferenceObject interface.
 			case mode == StoreRehydrationSpecNil && reflect.DeepEqual(obj.Spec, *new(Spec)):
-				if err == nil && &ret != nil {
+				if err == nil {
 					*obj = ret
 				}
 			}
@@ -145,7 +141,7 @@ func WithStore[Spec, Status any](store Store, mode StoreRehydrationMode) ClientO
 
 			// If the returned object is empty, we should delete the reference
 			if after == (*Object[Spec, Status])(nil) {
-				return nil, store.Delete(ctx, ref, after, nil, nil, nil)
+				return nil, store.Delete(ctx, ref, after, nil, nil, nil, storage.DeleteOptions{})
 			}
 
 			// Update the provided "before" reference with the returned "after" object
